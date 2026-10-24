@@ -37,7 +37,7 @@ Filter chips (All, TODO, FIXME, HACK, XXX), a checkbox per item, a running "N op
 
 Ticking an item off changes what `get_selection` returns, and nothing else: resolved items stay in the panel, struck through, until the next scan. A new scan starts from zero tick-offs, because the old keys no longer describe the new text.
 
-The panel and `main.js` talk over a same-origin `BroadcastChannel`, and the panel wakes the plugin with `fetch('cindy-ghost://todo-scan/wake')` first, because a freshly opened panel usually finds it asleep. Requests carry a `reqId` and are retried until answered; every panel message is idempotent (read state, set filter, tick an item). The panel has no bridge to the Host: it cannot call tools, read credentials or touch files, and it never pushes anything to the Agent. The Agent asks, with `get_selection`.
+The panel and `main.js` talk over a same-origin `BroadcastChannel`, and the panel wakes the plugin with `fetch('cindy-ghost://todo-scan/wake')` first, because a freshly opened panel usually finds it asleep. A state read carries a `reqId` and is re-sent until the plugin answers, because a freshly opened panel usually meets a plugin that is still starting. A filter change or a tick is sent once and drawn from the panel's own copy straight away; the next state read is what reconciles it with the plugin. Every panel message is idempotent, so a repeated read cannot double-apply a tick. The panel has no bridge to the Host: it cannot call tools, read credentials or touch files, and it never pushes anything to the Agent. The Agent asks, with `get_selection`.
 
 ## Errors
 

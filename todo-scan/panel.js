@@ -7,8 +7,9 @@
  *  - it talks to main.js over a same-origin BroadcastChannel, and only after
  *    waking the brain with `fetch('cindy-ghost://todo-scan/wake')` — a freshly
  *    opened panel usually finds the brain asleep, so a bare broadcast is lost.
- *  - requests carry a reqId and are re-sent until the brain answers; the brain
- *    dedupes by reqId. Every request is idempotent (state read, filter, tick).
+ *  - state reads carry a reqId and are re-sent until the brain answers; the brain
+ *    dedupes by reqId. Filter and tick messages are sent once, drawn locally at
+ *    once, and reconciled by the next state read. Every message is idempotent.
  *  - no title bar: the Host draws the standard header above this document.
  */
 (function () {
