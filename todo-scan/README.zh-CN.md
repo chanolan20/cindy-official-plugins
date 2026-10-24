@@ -12,7 +12,7 @@
 
 ## 使用
 
-直接用自然语言提问即可 ——「这个文件还剩什么」「把这个 PR 里的 FIXME 收集起来」「上线前把 HACK 都列出来」—— Agent 会把文本交给 `scan_todos`。插件提供两个工具。
+直接提出具体的标记查找即可 ——「把这个 PR 里的 FIXME 收集起来」「上线前把 HACK 都列出来」「找出这个 diff 里的 TODO」—— Agent 会把文本交给 `scan_todos`。普通的待办问题（「这里还剩什么要做」）不会路由到这里，因为插件只匹配这四种字面标记。插件提供两个工具。
 
 `scan_todos`
 
@@ -21,15 +21,15 @@
 | `text` | 必填。要扫描的原始文本，含换行，最长 200,000 字符。行号相对这个字符串计算，因此必须原样传入，不要先做摘要。 |
 | `tag` | 可选。`TODO`、`FIXME`、`HACK` 或 `XXX`；省略则四类都扫。 |
 
-返回 `{ total, truncated, scannedLines, byTag, items }`。每个条目为 `{ key, line, column, tag, text }`，`line`、`column` 是在所传文本内从 1 开始的行列位置，`text` 是标记之后该行的剩余内容（去掉开头的分隔符和结尾空白）。一行可能有多个标记，各自单独上报，因此 key 形如 `line:column:tag`。`byTag` 始终统计全部四类标记，即使 `tag` 缩小了返回范围。无匹配是成功结果，不是错误。
+返回 `{ total, truncated, scannedLines, byTag, items }`。每个条目为 `{ key, line, column, tag, text }`，`line`、`column` 是在所传文本内从 1 开始的行列位置，`text` 是标记之后该行的剩余内容（去掉开头的分隔符和结尾空白）。一行可能有多个标记，各自单独上报，因此 key 形如 `line:column:tag`。`byTag` 只统计扫描保留下来的标记：传入 `tag` 时另外三类记为 `0`，因为筛选是在扫描过程中生效的，而不是事后过滤结果。无匹配是成功结果，不是错误。
 
-最多返回 200 个标记。超过时 `truncated` 为 `true`，`total` 等于返回条数而非真实总数，`note` 会说明结果不完整；请缩小范围重新扫描剩余部分。
+最多返回 200 个标记。超过时 `truncated` 为 `true`，`total` 等于返回条数而非真实总数。`scan_todos` 不返回 `note` 字段 —— 说明结果不完整的 `note` 来自 `get_selection`。请缩小范围重新扫描剩余部分。
 
 `get_selection`
 
-无参数。返回面板当前状态：`{ hasScan, lastScanAt, filter, total, truncated, visibleCount, unresolvedCount, resolvedCount, byTag, items, markdown, note }`。`items` 只包含未完成的标记，`markdown` 是同一份清单的 `- [ ]` 形式，可直接粘贴。
+无参数。返回面板当前状态：`{ hasScan, lastScanAt, filter, total, truncated, visibleCount, unresolvedCount, resolvedCount, byTag, items, markdown, note }`。`items` 只包含面板当前显示的未完成标记，`markdown` 是同一份清单的 `- [ ]` 形式，可直接粘贴。
 
-计数只有 `visibleCount`、`unresolvedCount`、`resolvedCount` 跟随当前 `filter` —— `resolvedCount` 只统计用户真正勾掉的条目，被筛选隐藏的标记绝不会被算作已完成 —— 而 `total` 与 `byTag` 描述整次扫描。若 `hasScan` 为 false，说明本次会话还没有扫描过。
+`items`、`markdown` 与 `visibleCount`、`unresolvedCount`、`resolvedCount` 都跟随当前 `filter` —— `resolvedCount` 只统计用户真正勾掉的条目，被筛选隐藏的标记绝不会被算作已完成 —— 而 `total` 与 `byTag` 描述整次扫描。若 `hasScan` 为 false，说明本次会话还没有扫描过。
 
 ## 面板
 

@@ -12,7 +12,7 @@ This plugin is **opt-in**: its `provisioning.json` entry seeds it for nobody, so
 
 ## Use
 
-Ask in plain language — "what is left in this file", "collect the FIXMEs from this PR", "list every HACK before we ship" — and the Agent calls `scan_todos` with the text. Two tools are exposed.
+Ask for a specific marker search — "collect the FIXMEs from this PR", "list every HACK before we ship", "find the TODOs in this diff" — and the Agent calls `scan_todos` with the text. Plain task-list questions ("what is left to do here") are not routed here, because the plugin only matches the four literal markers. Two tools are exposed.
 
 `scan_todos`
 
@@ -21,15 +21,15 @@ Ask in plain language — "what is left in this file", "collect the FIXMEs from 
 | `text` | Required. The exact text to scan, including newlines, up to 200,000 characters. Line numbers are reported against this string, so it must be passed verbatim rather than summarised. |
 | `tag` | Optional. `TODO`, `FIXME`, `HACK` or `XXX`; omit it to scan all four. |
 
-Returns `{ total, truncated, scannedLines, byTag, items }`. Each item is `{ key, line, column, tag, text }`, with 1-based `line` and `column` inside the supplied text and `text` the remainder of that line after the marker, with leading separators and trailing whitespace removed. A line can hold several markers; each is reported separately, which is why the key is `line:column:tag`. `byTag` always counts all four tags for the scan, even when `tag` narrows what is returned. An empty match list is a successful result, not an error.
+Returns `{ total, truncated, scannedLines, byTag, items }`. Each item is `{ key, line, column, tag, text }`, with 1-based `line` and `column` inside the supplied text and `text` the remainder of that line after the marker, with leading separators and trailing whitespace removed. A line can hold several markers; each is reported separately, which is why the key is `line:column:tag`. `byTag` counts only the markers the scan kept: when `tag` is set the other three tags are reported as `0`, because the filter applies while scanning rather than to a finished list. An empty match list is a successful result, not an error.
 
-At most 200 markers are returned. Past that, `truncated` is `true`, `total` equals the number returned rather than the true count, and `note` says the scan is incomplete; rescan a narrower slice to see the rest.
+At most 200 markers are returned. Past that, `truncated` is `true` and `total` equals the number returned rather than the true count. `scan_todos` returns no `note` field — the `note` that calls a scan incomplete comes from `get_selection`. Rescan a narrower slice to see the rest.
 
 `get_selection`
 
-Takes no parameters. Returns the panel's current state: `{ hasScan, lastScanAt, filter, total, truncated, visibleCount, unresolvedCount, resolvedCount, byTag, items, markdown, note }`. `items` are the unresolved markers only, and `markdown` is the same list as a `- [ ]` checklist ready to paste.
+Takes no parameters. Returns the panel's current state: `{ hasScan, lastScanAt, filter, total, truncated, visibleCount, unresolvedCount, resolvedCount, byTag, items, markdown, note }`. `items` are the unresolved markers the panel currently shows, and `markdown` is the same list as a `- [ ]` checklist ready to paste.
 
-Counts follow the active `filter` for `visibleCount`, `unresolvedCount` and `resolvedCount` only — `resolvedCount` counts items the user actually ticked, so markers hidden by the filter are never reported as done — while `total` and `byTag` describe the whole scan. If `hasScan` is false, nothing has been scanned yet in this session.
+`items`, `markdown` and the counts `visibleCount`, `unresolvedCount` and `resolvedCount` all follow the active `filter` — `resolvedCount` counts items the user actually ticked, so markers hidden by the filter are never reported as done — while `total` and `byTag` describe the whole scan. If `hasScan` is false, nothing has been scanned yet in this session.
 
 ## The panel
 
