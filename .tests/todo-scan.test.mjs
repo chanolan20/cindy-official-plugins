@@ -109,8 +109,9 @@ test('returns one successful result with the Host callId', async () => {
   assert.equal(message.result.scannedLines, 4);
   assert.deepEqual(message.result.byTag, { TODO: 1, FIXME: 0, HACK: 0, XXX: 0 });
   assert.deepEqual(message.result.items[0], {
-    key: '2:TODO',
+    key: '2:6:TODO',
     line: 2,
+    column: 6,
     tag: 'TODO',
     text: 'handle the empty case'
   });
@@ -208,6 +209,75 @@ test('more than 200 matches report truncated instead of pretending to be complet
   assert.equal(sent[0].result.items.length, 200);
   assert.equal(sent[0].result.truncated, true);
   assert.equal(sent[0].result.byTag.TODO, 205, 'counts stay accurate when the list is capped');
+});
+
+test('several markers on one line are all reported, each with its own key', async () => {
+  const host = bootPlugin();
+  const sent = await call(host, {
+    type: 'tool-call',
+    callId: 'call-multi',
+    tool: 'scan_todos',
+    args: { text: '// TODO: cleanup; FIXME: crash' }
+  });
+
+  const result = sent[0].result;
+  assert.equal(result.total, 2, 'the second marker on a line is not skipped');
+  assert.deepEqual(result.items.map((item) => item.tag), ['TODO', 'FIXME']);
+  assert.deepEqual(result.items.map((item) => item.column), [4, 19]);
+  assert.deepEqual(result.items.map((item) => item.text), ['cleanup; FIXME: crash', 'crash']);
+  assert.equal(
+    new Set(result.items.map((item) => item.key)).size,
+    2,
+    'keys must stay distinct — the panel ticks items off by key'
+  );
+});
+
+test('a tag filter finds a marker that is not the first on the line', async () => {
+  const host = bootPlugin();
+  const sent = await call(host, {
+    type: 'tool-call',
+    callId: 'call-multi-filter',
+    tool: 'scan_todos',
+    args: { text: '// TODO: cleanup; FIXME: crash', tag: 'fixme' }
+  });
+
+  assert.equal(sent[0].result.total, 1);
+  assert.equal(sent[0].result.items[0].tag, 'FIXME');
+  assert.deepEqual(sent[0].result.byTag, { TODO: 0, FIXME: 1, HACK: 0, XXX: 0 });
+});
+
+test('get_selection counts within the active filter, so hidden work is not "resolved"', async () => {
+  const host = bootPlugin();
+  await call(host, {
+    type: 'tool-call',
+    callId: 'f-scan',
+    tool: 'scan_todos',
+    args: { text: '// TODO: open\n// FIXME: also open' }
+  });
+  await host.channel.fromPanel({ type: 'set-filter', filter: 'todo' });
+
+  const sent = await call(host, { type: 'tool-call', callId: 'f-sel', tool: 'get_selection', args: {} });
+  const result = sent[sent.length - 1].result;
+  assert.equal(result.filter, 'TODO');
+  assert.equal(result.visibleCount, 1);
+  assert.equal(result.unresolvedCount, 1);
+  assert.equal(
+    result.resolvedCount,
+    0,
+    'the FIXME hidden by the filter was never ticked, so it cannot count as resolved'
+  );
+});
+
+test('get_selection says the list is capped when the scan was truncated', async () => {
+  const host = bootPlugin();
+  const text = Array.from({ length: 205 }, (_, i) => `// TODO: item ${i + 1}`).join('\n');
+  await call(host, { type: 'tool-call', callId: 't-scan', tool: 'scan_todos', args: { text } });
+
+  const sent = await call(host, { type: 'tool-call', callId: 't-sel', tool: 'get_selection', args: {} });
+  const result = sent[sent.length - 1].result;
+  assert.equal(result.truncated, true, 'a capped scan stays capped in the selection');
+  assert.match(result.note, /200-marker cap/);
+  assert.equal(result.unresolvedCount, 200);
 });
 
 test('an unknown tool produces one actionable failure for that call', async () => {
@@ -341,7 +411,8 @@ test('get_selection before any scan says so instead of pretending', async () => 
 test('a new scan clears earlier tick-offs', async () => {
   const host = bootPlugin();
   await call(host, { type: 'tool-call', callId: 'r1', tool: 'scan_todos', args: { text: '// TODO: a' } });
-  await host.channel.fromPanel({ type: 'mark', key: '1:TODO', resolved: true });
+  const only = host.channel.posted.find((m) => m.type === 'state').items[0];
+  await host.channel.fromPanel({ type: 'mark', key: only.key, resolved: true });
   const first = await call(host, { type: 'tool-call', callId: 'r2', tool: 'get_selection', args: {} });
   assert.equal(first[first.length - 1].result.unresolvedCount, 0);
 
@@ -459,6 +530,36 @@ test('the CSP audit rejects what the Host would block', () => {
   ]) {
     assert.ok(found.includes(expected), 'audit should flag ' + expected + ', got:\n' + found);
   }
+});
+
+test('linked stylesheets are audited, not only inline <style> blocks', () => {
+  // A <link rel="stylesheet"> is a second document under the same policy;
+  // auditing only inline blocks would let a remote font or @import through the
+  // very file this plugin ships as panel.css.
+  const dir = mkdtempSync(join(tmpdir(), 'todo-scan-css-'));
+  try {
+    writeFileSync(
+      join(dir, 'panel.css'),
+      [
+        '@import url(https://cdn.example.com/theme.css);',
+        '@font-face{font-family:x;src:url("https://fonts.example.com/x.woff2")}'
+      ].join('\n')
+    );
+    writeFileSync(
+      join(dir, 'panel.html'),
+      '<!DOCTYPE html><html><head><link rel="stylesheet" href="panel.css"></head><body></body></html>'
+    );
+
+    const audit = auditPage({ dir, ghostId: 'todo-scan', htmlPath: 'panel.html' });
+    const found = audit.violations.join('\n');
+    assert.ok(found.includes('panel.css: @import pulls a stylesheet from remote-https'), 'linked @import must be flagged:\n' + found);
+    assert.ok(found.includes('panel.css: @font-face loads a font from a non-same-origin URL'), 'linked @font-face must be flagged:\n' + found);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // The shipped panel.css is one of the audited stylesheets, and it is clean.
+  assert.deepEqual(auditPanel().violations, []);
 });
 
 test('page code cannot reach the Host or another origin', () => {

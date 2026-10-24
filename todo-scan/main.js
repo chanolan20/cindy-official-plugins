@@ -25,7 +25,9 @@ var MAX_TEXT_LENGTH = 200000;
 var MAX_ITEMS = 200;
 var TAG_NAMES = ['TODO', 'FIXME', 'HACK', 'XXX'];
 var TAG_LOOKUP = { TODO: true, FIXME: true, HACK: true, XXX: true };
-var MARKER_RE = /\b(TODO|FIXME|HACK|XXX)\b/i;
+// Source only: each line is scanned with a fresh global copy so several markers
+// on one line are all found.
+var MARKER_PATTERN = '\\b(TODO|FIXME|HACK|XXX)\\b';
 var LEADING_SEPARATOR_RE = /^[\s:：\-–—(\[]+/;
 var CHANNEL_NAME = 'todo-scan';
 var MAX_SEEN_REQ_IDS = 50;
@@ -77,23 +79,26 @@ function scan(text, tagFilter) {
 
   for (var i = 0; i < lines.length; i += 1) {
     var line = lines[i];
-    var match = MARKER_RE.exec(line);
-    if (!match) continue;
+    var markerRe = new RegExp(MARKER_PATTERN, 'gi');
+    var match;
+    while ((match = markerRe.exec(line)) !== null) {
+      var tag = match[1].toUpperCase();
+      if (tagFilter && tag !== tagFilter) continue;
 
-    var tag = match[1].toUpperCase();
-    if (tagFilter && tag !== tagFilter) continue;
-
-    byTag[tag] += 1;
-    if (items.length >= MAX_ITEMS) {
-      truncated = true;
-      continue;
+      byTag[tag] += 1;
+      if (items.length >= MAX_ITEMS) {
+        truncated = true;
+        continue;
+      }
+      items.push({
+        // Line and column keep the key unique when one line holds two markers.
+        key: (i + 1) + ':' + (match.index + 1) + ':' + tag,
+        line: i + 1,
+        column: match.index + 1,
+        tag: tag,
+        text: markerText(line, match.index, match[0].length)
+      });
     }
-    items.push({
-      key: (i + 1) + ':' + tag,
-      line: i + 1,
-      tag: tag,
-      text: markerText(line, match.index, match[1].length)
-    });
   }
 
   return {
@@ -251,17 +256,27 @@ function handleScanTodos(callId, args) {
 }
 
 function handleGetSelection(callId) {
-  var open = unresolvedItems();
+  // Both counts come from the same visible set: subtracting a filtered open list
+  // from the unfiltered total would report hidden work as done.
+  var visible = visibleItems();
+  var open = visible.filter(function (item) {
+    return !state.resolved[item.key];
+  });
   return succeed(callId, {
     hasScan: state.lastScanAt > 0,
     lastScanAt: state.lastScanAt,
     filter: state.filter,
     total: state.total,
+    truncated: state.truncated,
+    visibleCount: visible.length,
     unresolvedCount: open.length,
-    resolvedCount: state.items.length - open.length,
+    resolvedCount: visible.length - open.length,
     byTag: state.byTag,
     items: open,
-    markdown: markdownFor(open)
+    markdown: markdownFor(open),
+    note: state.truncated
+      ? 'The scan stopped at the 200-marker cap, so this selection is incomplete. Rescan a narrower slice of the text to see the rest.'
+      : null
   });
 }
 
