@@ -1,0 +1,18 @@
+{
+  "name": "Headline Digest",
+  "description": "Turns NewsAPI top headlines into a short digest. The API key lives in Cindy's vault and is injected by the Host at request time — this plugin never sees it.",
+  "whenToUse": "Use when the user asks for current headlines, top stories from a country, news about a specific topic, or a quick news digest — for example \"what is happening in tech today\", \"top stories in Japan\", or \"headlines about the election\".",
+  "network": {
+    "secrets": {
+      "newsapi_key": {
+        "label": "NewsAPI key",
+        "hint": "Free key from newsapi.org/register. Stored encrypted by Cindy and injected as the x-api-key header; the plugin cannot read it."
+      }
+    }
+  },
+  "tools": {
+    "top_headlines": {
+      "description": "Fetch current top headlines from NewsAPI and return a compact digest. Requires the NewsAPI key the user saved through this plugin's settings; the Host injects it, so never ask for or pass a key yourself. Parameters: `query` (free text, optional), `country` (ISO 3166-1 alpha-2, default us), `category` (business, entertainment, general, health, science, sports, technology), `limit` (1-20, default 5). Returns JSON { count, query, country, category, articles: [{ title, source, url, publishedAt, description }], note } where `source` may be null and `description` is trimmed to 200 characters. `count: 0` with a note means the upstream service returned no matching articles, which is a successful result. This tool only reads: it makes one HTTPS GET to newsapi.org and changes nothing. If the saved key is missing or rejected the result is an actionable error telling the user where to fix it — relay that message as-is."
+    }
+  }
+}
