@@ -6,7 +6,7 @@
   "whenToUse": "Use before a task depends on a local CLI: cloning or committing (git), running a script or a build (python3), or checking which runtime is available. Answers \"is it installed, and which version\" instead of assuming.",
   "version": "1.0.0",
   "minCindyVersion": "0.1.64",
-  "author": "Cindy Research Workspace",
+  "author": "chanolan20",
   "kind": "chip",
   "entry": "main.js",
   "icon": "assets/icon.png",
