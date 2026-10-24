@@ -254,6 +254,8 @@ async function handleTopHeadlines(callId, args) {
 
   var articles = mapArticles(payload && payload.articles);
   return succeed(callId, {
+    untrusted: true,
+    origin: 'newsapi.org',
     count: articles.length,
     query: params.query || null,
     country: params.country,
