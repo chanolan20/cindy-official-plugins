@@ -120,6 +120,19 @@ function upstreamCode(body) {
   }
 }
 
+/**
+ * `apiKeyExhausted` is not a bad key: the key is valid and its plan budget is
+ * spent. NewsAPI answers it with HTTP 401, so it has to be recognized before
+ * the generic "replace the key" reply — otherwise the user is told to replace a
+ * key that works and the real fix (wait or upgrade) is never mentioned.
+ */
+function planLimitMessage(upstreamMessage, code) {
+  return 'NewsAPI accepted the saved key but its request budget is spent' +
+    (code ? ' (' + code + ')' : '') +
+    (upstreamMessage ? ': ' + upstreamMessage : '.') +
+    ' The free Developer plan is for development only and allows a small number of requests per day, then refuses until the daily reset. Wait for the reset or upgrade the plan at newsapi.org/pricing — replacing the key will not help.';
+}
+
 function mapArticles(articles) {
   if (!Array.isArray(articles)) return [];
   var mapped = [];
@@ -180,6 +193,10 @@ async function handleTopHeadlines(callId, args) {
 
   if (status === 401 || status === 403) {
     var code = upstreamCode(response.body);
+    // Spent daily budget arrives as a 401 with code "apiKeyExhausted".
+    if (code === 'apiKeyExhausted') {
+      return fail(callId, 'RATE_LIMITED', planLimitMessage('', code));
+    }
     return fail(
       callId,
       'CREDENTIAL_REJECTED',
@@ -226,7 +243,10 @@ async function handleTopHeadlines(callId, args) {
   if (payload && payload.status === 'error') {
     var errorCode = typeof payload.code === 'string' ? payload.code : '';
     var upstreamMessage = trim(payload.message, 240);
-    if (errorCode === 'apiKeyMissing' || errorCode === 'apiKeyInvalid' || errorCode === 'apiKeyDisabled' || errorCode === 'apiKeyExhausted') {
+    if (errorCode === 'apiKeyExhausted') {
+      return fail(callId, 'RATE_LIMITED', planLimitMessage(upstreamMessage, errorCode));
+    }
+    if (errorCode === 'apiKeyMissing' || errorCode === 'apiKeyInvalid' || errorCode === 'apiKeyDisabled') {
       return fail(
         callId,
         'CREDENTIAL_REJECTED',
@@ -286,7 +306,7 @@ cindy.onHostMessage(async function (message) {
     return fail(
       callId,
       'INTERNAL_ERROR',
-      'Headline Digest stopped before finishing. Nothing was changed. Retry once; if it fails again, report the plugin version (1.0.0).'
+      'Headline Digest stopped before finishing. Nothing was changed. Retry once; if it fails again, report the plugin version (1.0.1).'
     );
   }
 });

@@ -4,7 +4,7 @@
   "name": "Headline Digest",
   "description": "Turns NewsAPI top headlines into a short digest. The API key lives in Cindy's vault and is injected by the Host at request time — this plugin never sees it.",
   "whenToUse": "Use when the user asks for current headlines, top stories from a country, news about a specific topic, or a quick news digest — for example \"what is happening in tech today\", \"top stories in Japan\", or \"headlines about the election\".",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minCindyVersion": "0.1.64",
   "author": "chanolan20",
   "kind": "chip",

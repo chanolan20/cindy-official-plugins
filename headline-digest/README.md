@@ -43,8 +43,8 @@ Each article is `{ title, source, url, publishedAt, description }`. Titles are t
 | --- | --- |
 | `INVALID_ARGUMENT` | Bad `query` length, country code, category or `limit`. |
 | `CREDENTIAL_MISSING` | No key saved yet, or the Host could not attach it. |
-| `CREDENTIAL_REJECTED` | 401/403, or an upstream `apiKey*` error: the saved key is wrong, disabled or exhausted. |
-| `RATE_LIMITED` | 429, `rateLimited` or `maximumResultsReached`: the plan's budget is spent. |
+| `CREDENTIAL_REJECTED` | 401/403, or upstream `apiKeyMissing` / `apiKeyInvalid` / `apiKeyDisabled`: replace the saved key. |
+| `RATE_LIMITED` | 429, `rateLimited`, `maximumResultsReached`, or an `apiKeyExhausted` 401: the plan's budget is spent. The key itself is fine — wait for the daily reset or upgrade the plan. |
 | `UPSTREAM_ERROR` | Any other non-2xx response or upstream error body. |
 | `UPSTREAM_INVALID` | The response was not JSON this plugin can read. |
 | `RESPONSE_TOO_LARGE` | The Host capped the response; ask for fewer headlines. |

@@ -170,6 +170,36 @@ test('a 401 is reported as a rejected credential with a fix location', async () 
   assert.match(message.message, /cannot read the stored value/i);
 });
 
+test('a spent daily budget on a 401 is a plan limit, not a bad key', async () => {
+  // NewsAPI answers apiKeyExhausted with HTTP 401, so the generic 401 branch
+  // would otherwise tell the user to replace a key that works.
+  const host = boot(async () =>
+    jsonResponse(
+      { status: 'error', code: 'apiKeyExhausted', message: 'You have made too many requests.' },
+      401
+    )
+  );
+
+  const [message] = await call(host, {});
+  assert.equal(message.ok, false);
+  assert.equal(message.errorCode, 'RATE_LIMITED');
+  assert.match(message.message, /apiKeyExhausted/);
+  assert.match(message.message, /wait for the reset/i);
+  assert.match(message.message, /upgrade the plan/i);
+  assert.match(message.message, /replacing the key will not help/i, 'name the real fix');
+  assert.doesNotMatch(message.message, /rejected the saved key/i, 'the key is valid; do not reject it');
+});
+
+test('an apiKeyExhausted error body on a 200 is a plan limit too', async () => {
+  const host = boot(async () =>
+    jsonResponse({ status: 'error', code: 'apiKeyExhausted', message: 'Too many requests.' })
+  );
+  const [message] = await call(host, {});
+  assert.equal(message.errorCode, 'RATE_LIMITED');
+  assert.match(message.message, /budget is spent/i);
+  assert.match(message.message, /Too many requests\./, 'relays the upstream detail');
+});
+
 test('a Host-level failure (key not configured) passes its guidance through', async () => {
   const host = boot(async () => ({
     ok: false,

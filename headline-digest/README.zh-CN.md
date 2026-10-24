@@ -43,8 +43,8 @@ key 保存在 Cindy 的密钥库中，插件本身不保存。**NewsAPI 的免�
 | --- | --- |
 | `INVALID_ARGUMENT` | `query` 过长、国家代码、分类或 `limit` 不合法。 |
 | `CREDENTIAL_MISSING` | 尚未保存 key，或宿主无法附加凭据。 |
-| `CREDENTIAL_REJECTED` | 401/403，或上游 `apiKey*` 错误：key 错误、被禁用或额度耗尽。 |
-| `RATE_LIMITED` | 429、`rateLimited` 或 `maximumResultsReached`：套餐额度已用尽。 |
+| `CREDENTIAL_REJECTED` | 401/403，或上游 `apiKeyMissing` / `apiKeyInvalid` / `apiKeyDisabled`：需要更换 key。 |
+| `RATE_LIMITED` | 429、`rateLimited`、`maximumResultsReached`，或返回 `apiKeyExhausted` 的 401：套餐额度已用尽。key 本身没有问题 —— 等每日重置或升级套餐。 |
 | `UPSTREAM_ERROR` | 其它非 2xx 响应或上游错误体。 |
 | `UPSTREAM_INVALID` | 响应不是本插件能读取的 JSON。 |
 | `RESPONSE_TOO_LARGE` | 宿主截断了响应；请减少条数。 |
