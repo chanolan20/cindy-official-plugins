@@ -6,7 +6,7 @@
   "whenToUse": "Use when the user wants a task list from source code, a diff, notes or a document — \"what is left in this file\", \"collect the FIXMEs from this PR\", \"list every HACK before we ship\" — or wants to review and tick off marker items in a panel.",
   "version": "1.1.0",
   "minCindyVersion": "0.1.64",
-  "author": "Cindy Research Workspace",
+  "author": "chanolan20",
   "kind": "chip",
   "entry": "main.js",
   "icon": "assets/icon.png",
