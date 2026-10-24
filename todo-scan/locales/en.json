@@ -1,0 +1,16 @@
+{
+  "name": "Todo Scan",
+  "description": "Finds TODO / FIXME / HACK / XXX markers in text the Agent already has, shows them in a dockable panel for triage, and returns what is still open as items or a markdown checklist. Read-only: no file edits, no network.",
+  "whenToUse": "Use when the user wants a task list from source code, a diff, notes or a document — \"what is left in this file\", \"collect the FIXMEs from this PR\", \"list every HACK before we ship\" — or wants to review and tick off marker items in a panel.",
+  "panel": {
+    "title": "Todo Scan"
+  },
+  "tools": {
+    "scan_todos": {
+      "description": "Scan text for TODO, FIXME, HACK and XXX markers. Pass the exact text to inspect as `text` (file contents, a diff, or notes); pass `tag` to keep a single marker type. Returns JSON { total, truncated, scannedLines, byTag, items } where each item is { line, tag, text } with `line` being the 1-based line number inside the supplied text and `text` the remainder of that line after the marker. The same results are pushed to the plugin's panel, where the user can filter and tick items off. `truncated: true` means more than 200 matches exist and only the first 200 are returned; `total` then equals the number returned, not the true count. An empty match list is a successful result, not an error. This tool only reads the string it is given: it does not open files, does not modify anything, and makes no network requests."
+    },
+    "get_selection": {
+      "description": "Read the panel's current state as structured data after the user has triaged it. Returns JSON { hasScan, lastScanAt, filter, total, unresolvedCount, resolvedCount, byTag, items, markdown } where `items` are the still-unresolved markers the user has not ticked off, each { key, line, tag, text }, and `markdown` is the same list as a `- [ ]` checklist that can be pasted into a reply or a file. Call this when the user refers to what they ticked, filtered or selected in the Todo Scan panel (for example \"use the ones I left\", \"summarise what is still open\", \"make a ticket list from my selection\"). It performs no scanning and no I/O: it reads the last scan this plugin holds in memory. If hasScan is false, ask the user to run a scan first."
+    }
+  }
+}
