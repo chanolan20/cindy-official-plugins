@@ -14,7 +14,7 @@ This plugin is **opt-in**: its `provisioning.json` entry seeds it for nobody, so
 
 ## Credential handling
 
-`ghost.json` declares one host and one secret. The settings page writes the value straight to the Host vault through `PUT /secrets/newsapi_key` and clears the field, so the page keeps no copy. `GET /secrets` returns only `{ key, saved, tail? }`, which is what the status line shows; `DELETE` clears the key. Cindy injects `X-Api-Key` for `newsapi.org` at request time, and `main.js` sends no credential of its own, so the plugin never receives the value. A redirect out of the declared host does not carry the header, and the sandbox cannot read it back. The key appears in no result, error message, log or KV entry.
+`ghost.json` declares one host and one secret. The settings page writes the value straight to the Host vault through `PUT /secrets/newsapi_key` and clears the field, so the page keeps no copy. `GET /secrets` reports only `{ key, saved, tail? }` per entry — never the value — and the status line reads that; `DELETE` clears the key. Cindy injects `X-Api-Key` for `newsapi.org` at request time, and `main.js` sends no credential of its own, so the plugin never receives the value. A redirect out of the declared host does not carry the header, and the sandbox cannot read it back. The key appears in no result, error message, log or KV entry.
 
 ## Use
 
@@ -44,7 +44,7 @@ Each article is `{ title, source, url, publishedAt, description }`. Titles are t
 | `INVALID_ARGUMENT` | Bad `query` length, country code, category or `limit`. |
 | `CREDENTIAL_MISSING` | No key saved yet, or the Host could not attach it. |
 | `CREDENTIAL_REJECTED` | 401/403, or upstream `apiKeyMissing` / `apiKeyInvalid` / `apiKeyDisabled`: replace the saved key. |
-| `RATE_LIMITED` | 429, `rateLimited`, `maximumResultsReached`, or an `apiKeyExhausted` 401: the plan's budget is spent. The key itself is fine — wait for the daily reset or upgrade the plan. |
+| `RATE_LIMITED` | 429, `rateLimited`, `maximumResultsReached`, or an `apiKeyExhausted` 401 or 403: the plan's budget is spent. The key itself is fine — wait for the daily reset or upgrade the plan. |
 | `UPSTREAM_ERROR` | Any other non-2xx response or upstream error body. |
 | `UPSTREAM_INVALID` | The response was not JSON this plugin can read. |
 | `RESPONSE_TOO_LARGE` | The Host capped the response; ask for fewer headlines. |

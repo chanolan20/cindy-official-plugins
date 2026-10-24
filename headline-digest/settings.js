@@ -5,7 +5,7 @@
  *  - the value goes straight from the input to the Host vault via
  *    `PUT /secrets/newsapi_key`; it is never written to /kv, a BroadcastChannel,
  *    the DOM after submit, or a log;
- *  - `GET /secrets` returns only `{ key, saved, tail? }` — never the value;
+ *  - `GET /secrets` reports only `{ key, saved, tail? }` per entry — never the value;
  *  - `DELETE /secrets/newsapi_key` clears it.
  */
 (function () {

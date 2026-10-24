@@ -14,7 +14,7 @@ key 保存在 Cindy 的密钥库中，插件本身不保存。**NewsAPI 的免�
 
 ## 凭据处理
 
-`ghost.json` 只声明一个主机和一个密钥。设置页通过 `PUT /secrets/newsapi_key` 直接把值写入宿主密钥库，随后清空输入框，页面不再保留副本。`GET /secrets` 只返回 `{ key, saved, tail? }`，状态行据此显示；`DELETE` 清除 key。请求时由 Cindy 为 `newsapi.org` 注入 `X-Api-Key`，`main.js` 自己不发送任何凭据，插件始终拿不到密钥值。跳转到声明主机之外的地址不会携带该请求头，沙箱也无法读回。key 不会出现在任何返回结果、错误消息、日志或 KV 中。
+`ghost.json` 只声明一个主机和一个密钥。设置页通过 `PUT /secrets/newsapi_key` 直接把值写入宿主密钥库，随后清空输入框，页面不再保留副本。`GET /secrets` 对每个条目只报告 `{ key, saved, tail? }`（从不返回值），状态行据此显示；`DELETE` 清除 key。请求时由 Cindy 为 `newsapi.org` 注入 `X-Api-Key`，`main.js` 自己不发送任何凭据，插件始终拿不到密钥值。跳转到声明主机之外的地址不会携带该请求头，沙箱也无法读回。key 不会出现在任何返回结果、错误消息、日志或 KV 中。
 
 ## 使用
 
@@ -44,7 +44,7 @@ key 保存在 Cindy 的密钥库中，插件本身不保存。**NewsAPI 的免�
 | `INVALID_ARGUMENT` | `query` 过长、国家代码、分类或 `limit` 不合法。 |
 | `CREDENTIAL_MISSING` | 尚未保存 key，或宿主无法附加凭据。 |
 | `CREDENTIAL_REJECTED` | 401/403，或上游 `apiKeyMissing` / `apiKeyInvalid` / `apiKeyDisabled`：需要更换 key。 |
-| `RATE_LIMITED` | 429、`rateLimited`、`maximumResultsReached`，或返回 `apiKeyExhausted` 的 401：套餐额度已用尽。key 本身没有问题 —— 等每日重置或升级套餐。 |
+| `RATE_LIMITED` | 429、`rateLimited`、`maximumResultsReached`，或返回 `apiKeyExhausted` 的 401 或 403：套餐额度已用尽。key 本身没有问题 —— 等每日重置或升级套餐。 |
 | `UPSTREAM_ERROR` | 其它非 2xx 响应或上游错误体。 |
 | `UPSTREAM_INVALID` | 响应不是本插件能读取的 JSON。 |
 | `RESPONSE_TOO_LARGE` | 宿主截断了响应；请减少条数。 |
