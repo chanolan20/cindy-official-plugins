@@ -106,9 +106,11 @@
     if (!items.length) {
       var empty = document.createElement('p');
       empty.className = 'empty';
-      empty.textContent = state.lastScanAt
-        ? 'Nothing matches this filter.'
-        : 'Run a scan in chat and its results appear here.';
+      // A filter that hides everything is a different fact from a scan that
+      // found nothing at all; say which one happened.
+      if (!state.lastScanAt) empty.textContent = 'Run a scan in chat and its results appear here.';
+      else if (state.filter) empty.textContent = 'Nothing matches this filter.';
+      else empty.textContent = 'The last scan found no markers.';
       els.list.appendChild(empty);
     }
 
@@ -119,7 +121,11 @@
       var box = document.createElement('input');
       box.type = 'checkbox';
       box.checked = Boolean(resolved[item.key]);
-      box.setAttribute('aria-label', 'Mark line ' + item.line + ' ' + item.tag + ' as resolved');
+      box.setAttribute(
+        'aria-label',
+        'Mark line ' + item.line + ' ' + item.tag + ' as ' +
+          (box.checked ? 'unresolved' : 'resolved')
+      );
       box.addEventListener('change', function () {
         send({ type: 'mark', key: item.key, resolved: box.checked });
         // Optimistic local update; the brain's next state is authoritative.
