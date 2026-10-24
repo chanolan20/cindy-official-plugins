@@ -1,9 +1,10 @@
 {
   "date": "2026-10-24",
-  "pluginVersion": "0.1.67",
+  "pluginVersion": "0.1.68",
   "baguette": "0.2.10",
-  "status": "vision-controls-review-regressions-verified-package-acceptance-pending",
+  "status": "identity-rename-regressions-verified-package-acceptance-pending",
   "passed": [
+    "0.1.68: plugin ID, command, source directory and iframe CSP use cindy-simulator; the Device Simulator display name and BaguetteCindy data paths are retained. Simulator regressions pass. Installed-identity and marketplace transition require release coordination; no automatic migration or installed-package acceptance is claimed.",
     "0.1.67: 57 target regressions passed. Removed pointer-lock changes implicitly assigning the keyboard toggle; no restoration snapshot or extra state. New transition regression first failed on 0.1.66, then verified both initial keyboard states, repeated pointer enter/exit/error, keyboard toggles during lock, latest-choice preservation on exit, explicit Escape release, actual key-routing decisions and matching toolbar aria-pressed. Keyboard state is written only by its explicit button and Escape command. Existing ordering/cancellation and pointer-mask regressions remain green. Native source/binaries and permissions unchanged.",
     "0.1.66: 56 target controller/model/platform tests passed. TV and integrated Vision gestures reserve the existing platform inputQueue through their full done lifetime; discrete actions finish only previously accepted gestures synchronously before enqueueing. This consolidates both input directions without a new queue or retry. Thirty-six discrete/gesture/discrete interleavings cover press/key/paste, TV wheel and Vision pointer/wheel/toolbar camera, before the first API starts or while it is pending, normal release, cancellation and rejection. The old implementation first reproduced the out-of-order began failure. Existing reverse-order, cross-page, mouse-edge and cancellation regressions pass. Native source/binaries and permissions unchanged.",
     "0.1.65: rebased onto main 1c35c36 (#202). Manifest and all four locales retain the upstream Device Simulator name/task title while preserving TV/Vision descriptions and tools. Task messages combine the upstream name with required iOS/tvOS/visionOS runtime guidance. The rebase introduces no change to spatial/native input, queue ownership or permissions.",

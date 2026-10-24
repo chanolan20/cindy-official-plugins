@@ -41,7 +41,7 @@ function createDeviceManager({dispatch,exclusive,assertEnabled,touch,contextFile
   const source=devices.find(d=>deviceId(d.udid)===deviceId(p.udid)),target=devices.find(d=>deviceId(d.udid)===deviceId(p.targetUdid));
   if(!source||!target)throw fail('DEVICE_NOT_OWNED','Select a device from this plugin.');
   if(!target.isAvailable)throw fail('DEVICE_UNAVAILABLE','The selected runtime is unavailable.');
-  if(devices.some(d=>d.udid!==source.udid&&d.udid!==target.udid&&d.state!=='Shutdown'))throw fail('OTHER_DEVICE_RUNNING','Shut down other Baguette devices before switching.');
+  if(devices.some(d=>d.udid!==source.udid&&d.udid!==target.udid&&d.state!=='Shutdown'))throw fail('OTHER_DEVICE_RUNNING','Shut down other Device Simulator devices before switching.');
   if(!['Booted','Shutdown'].includes(source.state)||!['Booted','Shutdown'].includes(target.state))throw fail('BUSY','Wait for the device state change to complete.');
   return {source,target};
  }

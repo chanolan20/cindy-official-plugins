@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'../../baguette-simulator/node/platform-stage.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../../cindy-simulator/node/platform-stage.js'),'utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function stage(platform='tvOS',respond=async()=>({ok:true}),withVision=false){
  const events={},windowEvents={},docEvents={},calls=[],status={},timers=new Map();let now=1000,nextTimer=0,stream;
@@ -18,7 +18,7 @@ function stage(platform='tvOS',respond=async()=>({ok:true}),withVision=false){
   addEventListener:(name,fn)=>listen(windowEvents,name,fn),
   StreamSession:class{constructor(options){stream=options;}static buildWSUrl(){return 'ws://127.0.0.1/stream';}start(){}stop(){}},
  };
- if(withVision)vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../baguette-simulator/node/vision-stage.js'),'utf8'),context);
+ if(withVision)vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../cindy-simulator/node/vision-stage.js'),'utf8'),context);
  vm.runInNewContext(source,context);
  function emit(name,props={}){const e={button:0,pointerId:1,isPrimary:true,clientX:960,clientY:540,deltaX:0,deltaY:0,deltaMode:0,preventDefault(){this.prevented=true;},...props};fire(events,name,e);return e;}
  return {emit,calls,status,cameraDrag:mode=>context.cindyVision.cameraDrag(mode),choose:value=>context.cindyVision.choose(value),advance:ms=>{now+=ms;},elapse:ms=>{now+=ms;for(const [id,t] of [...timers])if(t.at<=now){timers.delete(id);t.fn();}},windowEvent:name=>fire(windowEvents,name),hide:()=>{context.document.hidden=true;fire(docEvents,'visibilitychange');},show:()=>{context.document.hidden=false;},disconnect:()=>stream.onClose()};

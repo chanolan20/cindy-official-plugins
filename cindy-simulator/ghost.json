@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
   "minCindyVersion": "0.1.116",
-  "id": "baguette-simulator",
+  "id": "cindy-simulator",
   "name": "设备模拟器",
   "description": "独立的 iPhone、iPad、Apple TV 与 Vision Pro 模拟器。任务页实时画面、主视图设备管理；支持安装、启动、截图、遥控、空间手势和视角移动。需要 Apple Silicon、macOS 15+、完整 Xcode 与对应运行时。基于 Baguette。",
   "whenToUse": "iPhone、iPad、Apple TV、Vision Pro 模拟器；App 安装测试、截图与录屏、TV 遥控、Vision 空间手势与视角移动。",
-  "version": "0.1.67",
+  "version": "0.1.68",
   "kind": "chip",
   "entry": "main.js",
   "icon": "assets/icon.png",
@@ -968,7 +968,7 @@
     "lifecycle": "on-demand",
     "idleTimeoutSeconds": 3600
   },
-  "command": "baguette",
+  "command": "cindy-simulator",
   "preview": {
     "hosts": [
       "127.0.0.1"

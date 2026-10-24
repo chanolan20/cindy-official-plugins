@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const web=path.join(__dirname,'../../baguette-simulator/vendor/baguette/Baguette_Baguette.bundle/Web');
+const web=path.join(__dirname,'../../cindy-simulator/vendor/baguette/Baguette_Baguette.bundle/Web');
 test('opening and reconnecting the flat viewer reads the guest orientation without writing it',()=>{
  const source=fs.readFileSync(path.join(web,'sim-native.js'),'utf8');
  assert.ok(!source.includes('resetToPortrait'));
