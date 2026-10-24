@@ -145,6 +145,7 @@ export function auditPage(options) {
   const csp = parseCsp(policy);
   const violations = [];
   const scripts = [];
+  const stylesheets = [];
 
   let html = options.htmlOverride;
   if (html === undefined) {
@@ -211,22 +212,22 @@ export function auditPage(options) {
         continue;
       }
       if (tag.name === 'script') scripts.push(target);
+      if (tag.name === 'link') stylesheets.push(target);
     }
   }
 
-  // 3. Inline CSS is allowed (style-src 'unsafe-inline'), but a remote or data:
-  //    @font-face is not: font-src falls back to 'self'.
-  const styleBlocks = /<style\b[^>]*>([\s\S]*?)<\/style>/gi;
-  let styleMatch;
-  while ((styleMatch = styleBlocks.exec(html)) !== null) {
-    const css = styleMatch[1];
+  // 3. CSS is allowed (style-src 'unsafe-inline'), but a remote or data: @import
+  //    or @font-face is not: style-src and font-src fall back to 'self'. Linked
+  //    stylesheets are audited as well — a <link href="panel.css"> is a second
+  //    document the policy applies to, and skipping it would leave a hole.
+  const auditCss = (css, label) => {
     const imports = /@import\s+(?:url\()?\s*(?:"([^"]+)"|'([^']+)'|([^)\s;]+))/gi;
     let importMatch;
     while ((importMatch = imports.exec(css)) !== null) {
       const url = importMatch[1] || importMatch[2] || importMatch[3] || '';
       const kind = classifyReference(url, ghostId);
       if (kind !== 'same-origin') {
-        violations.push('@import pulls a stylesheet from ' + kind + ' (' + url + '); style-src is ' + JSON.stringify(effectiveSources(csp, 'style-src')));
+        violations.push(label + ' @import pulls a stylesheet from ' + kind + ' (' + url + '); style-src is ' + JSON.stringify(effectiveSources(csp, 'style-src')));
       }
     }
     const fontFaces = /@font-face\s*\{([^}]*)\}/gi;
@@ -234,10 +235,21 @@ export function auditPage(options) {
     while ((fontMatch = fontFaces.exec(css)) !== null) {
       for (const url of collectUrls(fontMatch[1])) {
         if (classifyReference(url, ghostId) !== 'same-origin') {
-          violations.push('@font-face loads a font from a non-same-origin URL (' + url + '); font-src falls back to ' + JSON.stringify(effectiveSources(csp, 'font-src')));
+          violations.push(label + ' @font-face loads a font from a non-same-origin URL (' + url + '); font-src falls back to ' + JSON.stringify(effectiveSources(csp, 'font-src')));
         }
       }
     }
+  };
+
+  const styleBlocks = /<style\b[^>]*>([\s\S]*?)<\/style>/gi;
+  let styleMatch;
+  let styleIndex = 0;
+  while ((styleMatch = styleBlocks.exec(html)) !== null) {
+    styleIndex += 1;
+    auditCss(styleMatch[1], 'inline <style> #' + styleIndex + ':');
+  }
+  for (const stylesheet of stylesheets) {
+    auditCss(readFileSync(stylesheet, 'utf8'), stylesheet.slice(dir.length + 1) + ':');
   }
 
   // 4. Images: img-src allows 'self', data:, blob: and https:. Anything else is blocked.
