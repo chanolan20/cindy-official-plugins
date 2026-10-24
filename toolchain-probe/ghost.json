@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 3,
+  "id": "toolchain-probe",
+  "name": "Toolchain Probe",
+  "description": "Reports the local toolchain the Agent will actually get — git and python3 versions, plus the worker's own Node runtime — by running allowlisted commands in a bundled Node worker.",
+  "whenToUse": "Use before a task depends on a local CLI: cloning or committing (git), running a script or a build (python3), or checking which runtime is available. Answers \"is it installed, and which version\" instead of assuming.",
+  "version": "1.0.0",
+  "minCindyVersion": "0.1.64",
+  "author": "Cindy Research Workspace",
+  "kind": "chip",
+  "entry": "main.js",
+  "icon": "assets/icon.png",
+  "launch": "on-demand",
+  "command": "toolchain-probe",
+  "node": {
+    "entry": "node/worker.cjs",
+    "protocol": "json-rpc-stdio",
+    "lifecycle": "on-demand"
+  },
+  "locales": {
+    "en": "locales/en.json",
+    "zh-CN": "locales/zh-CN.json",
+    "ja": "locales/ja.json",
+    "ko": "locales/ko.json"
+  },
+  "tools": [
+    {
+      "name": "check_toolchain",
+      "description": "Report whether git and python3 are installed locally and which version each one is, by running them with fixed arguments inside this plugin's bundled Node worker. Parameters: `tools` (array, optional — any of \"git\", \"python3\"; default both). Returns JSON { runtime: { node, platform, arch }, tools: [{ name, found, version, hint }], missing: [name], note }. A tool that is absent is a successful result with `found: false` and an actionable `hint`, not an error — relay the hint to the user. This tool only reads: it runs `<tool> --version` with no shell and writes nothing. If the worker itself cannot answer, the result is `ok: false` with NODE_REQUEST_FAILED.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tools": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["git", "python3"] },
+            "minItems": 1,
+            "maxItems": 2,
+            "description": "Optional subset to probe. Omit it to check both git and python3."
+          }
+        },
+        "required": []
+      }
+    }
+  ]
+}

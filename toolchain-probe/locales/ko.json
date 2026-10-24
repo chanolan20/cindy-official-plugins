@@ -1,0 +1,10 @@
+{
+  "name": "툴체인 점검",
+  "description": "함께 패키징된 Node 워커에서 허용된 명령만 실행해 에이전트가 실제로 쓸 수 있는 로컬 환경(git·python3 버전과 워커 자체의 Node 런타임)을 보고합니다.",
+  "whenToUse": "작업이 로컬 CLI에 의존할 때 사용합니다. clone이나 commit(git), 스크립트 실행이나 빌드(python3), 사용 가능한 런타임 확인 등. 설치되어 있다고 가정하지 않고 \"설치 여부와 버전\"을 답합니다.",
+  "tools": {
+    "check_toolchain": {
+      "description": "함께 패키징된 Node 워커 안에서 고정 인자로 명령을 실행해 git과 python3의 설치 여부와 각 버전을 보고합니다. 매개변수: `tools`(배열, 선택 — \"git\", \"python3\" 중 하나 이상, 기본값은 둘 다). 반환값은 JSON { runtime: { node, platform, arch }, tools: [{ name, found, version, hint }], missing: [name], note }. 도구가 없으면 오류가 아니라 `found: false`와 실행 가능한 `hint`를 담은 성공 결과입니다. hint는 사용자에게 그대로 전달하세요. 이 도구는 읽기 전용입니다: 셸 없이 `<tool> --version`만 실행하고 아무것도 쓰지 않습니다. 워커 자체가 응답하지 못하면 `ok: false`와 NODE_REQUEST_FAILED를 반환합니다."
+    }
+  }
+}

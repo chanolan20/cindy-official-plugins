@@ -1,0 +1,10 @@
+{
+  "name": "工具链探测",
+  "description": "通过随包 Node worker 执行白名单命令，报告智能体实际能用的本地工具链：git 与 python3 的版本，以及 worker 自身的 Node 运行时。",
+  "whenToUse": "当任务依赖本地命令行工具时使用：克隆或提交(git)、运行脚本或构建(python3)、确认可用运行时。回答\"是否已安装、版本是多少\"，而不是假定它存在。",
+  "tools": {
+    "check_toolchain": {
+      "description": "在本插件随包的 Node worker 中以固定参数运行命令，报告本机是否安装了 git 与 python3 及各自版本。参数：`tools`(数组，可选，取值为 \"git\"、\"python3\"，默认两者)。返回 JSON { runtime: { node, platform, arch }, tools: [{ name, found, version, hint }], missing: [name], note }。工具不存在属于成功结果：`found: false` 并附带可执行的 `hint`，不是错误——请把该提示转告用户。此工具只读：以无 shell 方式运行 `<tool> --version`，不写入任何内容。若 worker 本身无法应答，返回 `ok: false` 且错误码为 NODE_REQUEST_FAILED。"
+    }
+  }
+}

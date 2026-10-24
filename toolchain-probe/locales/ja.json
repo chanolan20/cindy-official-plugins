@@ -1,0 +1,10 @@
+{
+  "name": "ツールチェーン確認",
+  "description": "同梱の Node ワーカーで許可済みのコマンドを実行し、エージェントが実際に使えるローカル環境(git と python3 のバージョン、ワーカー自身の Node ランタイム)を報告します。",
+  "whenToUse": "タスクがローカルの CLI に依存するときに使います。clone や commit(git)、スクリプト実行やビルド(python3)、利用可能なランタイムの確認など。存在を前提にせず「入っているか、どのバージョンか」を答えられます。",
+  "tools": {
+    "check_toolchain": {
+      "description": "同梱の Node ワーカー内で固定引数のコマンドを実行し、git と python3 がローカルにインストールされているか、それぞれのバージョンを報告します。パラメータ: `tools`(配列、任意 — \"git\"、\"python3\" のいずれか、既定は両方)。返り値は JSON { runtime: { node, platform, arch }, tools: [{ name, found, version, hint }], missing: [name], note }。ツールが無い場合はエラーではなく、`found: false` と実行可能な `hint` を伴う成功結果です。hint はそのままユーザーに伝えてください。このツールは読み取りのみ: シェルを使わず `<tool> --version` を実行し、何も書き込みません。ワーカー自体が応答できない場合は `ok: false` と NODE_REQUEST_FAILED を返します。"
+    }
+  }
+}
