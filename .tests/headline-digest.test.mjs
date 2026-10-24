@@ -190,6 +190,32 @@ test('a spent daily budget on a 401 is a plan limit, not a bad key', async () =>
   assert.doesNotMatch(message.message, /rejected the saved key/i, 'the key is valid; do not reject it');
 });
 
+test('a spent budget reported on a 403 is a plan limit, not a bad key', async () => {
+  // The mapping reads `code` for 401 and 403 alike: NewsAPI has answered
+  // apiKeyExhausted with either status, so the status alone must not decide.
+  const host = boot(async () =>
+    jsonResponse(
+      { status: 'error', code: 'apiKeyExhausted', message: 'You have made too many requests.' },
+      403
+    )
+  );
+
+  const [message] = await call(host, {});
+  assert.equal(message.ok, false);
+  assert.equal(message.errorCode, 'RATE_LIMITED');
+  assert.match(message.message, /apiKeyExhausted/);
+  assert.match(message.message, /budget is spent/i);
+  assert.match(message.message, /upgrade the plan/i);
+  assert.doesNotMatch(message.message, /rejected the saved key/i, 'the key is valid; do not reject it');
+});
+
+test('a 403 without an exhaustion code is still a rejected key', async () => {
+  const host = boot(async () => jsonResponse({ status: 'error' }, 403));
+  const [message] = await call(host, {});
+  assert.equal(message.errorCode, 'CREDENTIAL_REJECTED');
+  assert.match(message.message, /settings/i);
+});
+
 test('an apiKeyExhausted error body on a 200 is a plan limit too', async () => {
   const host = boot(async () =>
     jsonResponse({ status: 'error', code: 'apiKeyExhausted', message: 'Too many requests.' })
