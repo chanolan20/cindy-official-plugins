@@ -22,7 +22,7 @@
 
   var channel = null;
   var pending = Object.create(null);
-  var state = { items: [], filter: '', resolved: [], lastScanAt: 0, total: 0, truncated: false };
+  var state = { items: [], filter: '', resolved: [], lastScanAt: 0, total: 0, truncated: false, scanGen: 0 };
   var markdownOpen = false;
 
   var els = {
@@ -127,7 +127,7 @@
           (box.checked ? 'unresolved' : 'resolved')
       );
       box.addEventListener('change', function () {
-        send({ type: 'mark', key: item.key, resolved: box.checked });
+        send({ type: 'mark', key: item.key, resolved: box.checked, scanGen: state.scanGen });
         // Optimistic local update; the brain's next state is authoritative.
         if (box.checked) {
           if (state.resolved.indexOf(item.key) === -1) state.resolved.push(item.key);
@@ -183,7 +183,8 @@
       resolved: Array.isArray(next.resolved) ? next.resolved : [],
       lastScanAt: typeof next.lastScanAt === 'number' ? next.lastScanAt : 0,
       total: typeof next.total === 'number' ? next.total : 0,
-      truncated: Boolean(next.truncated)
+      truncated: Boolean(next.truncated),
+      scanGen: typeof next.scanGen === 'number' ? next.scanGen : 0
     };
     render();
   }

@@ -346,7 +346,11 @@ test('the panel\'s state-request is answered with its own reqId', async () => {
   assert.equal(host.channel.posted[0].reqId, 'req-abc');
 });
 
-test('the retry loop is idempotent: one answer per reqId', async () => {
+test('a retried state-request is always answered again, never dropped', async () => {
+  // A dedupe-by-reqId cache was the bug: if the FIRST reply never reached the
+  // panel (channel hiccup), the cache still marked the reqId answered, so
+  // every retry after that was silently swallowed and the panel never
+  // recovered. State reads are pure, so answering twice is always safe.
   const host = bootPlugin();
   host.channel.posted.length = 0;
 
@@ -354,7 +358,8 @@ test('the retry loop is idempotent: one answer per reqId', async () => {
   await host.channel.fromPanel({ type: 'state-request', reqId: 'req-1' });
   await host.channel.fromPanel({ type: 'state-request', reqId: 'req-1' });
 
-  assert.equal(host.channel.posted.length, 1, 'panel retries are deduped');
+  assert.equal(host.channel.posted.length, 3, 'every retry gets its own answer');
+  assert.ok(host.channel.posted.every((m) => m.reqId === 'req-1'));
 });
 
 test('ticking an item in the panel removes it from get_selection', async () => {
@@ -365,10 +370,10 @@ test('ticking an item in the panel removes it from get_selection', async () => {
     tool: 'scan_todos',
     args: { text: '// TODO: keep me\n// FIXME: tick me' }
   });
-  const fixme = host.channel.posted.find((m) => m.type === 'state').items
-    .find((item) => item.tag === 'FIXME');
+  const scanState = host.channel.posted.find((m) => m.type === 'state');
+  const fixme = scanState.items.find((item) => item.tag === 'FIXME');
 
-  await host.channel.fromPanel({ type: 'mark', key: fixme.key, resolved: true });
+  await host.channel.fromPanel({ type: 'mark', key: fixme.key, resolved: true, scanGen: scanState.scanGen });
 
   const sent = await call(host, { type: 'tool-call', callId: 'sel-1', tool: 'get_selection', args: {} });
   const result = sent[sent.length - 1].result;
@@ -411,8 +416,9 @@ test('get_selection before any scan says so instead of pretending', async () => 
 test('a new scan clears earlier tick-offs', async () => {
   const host = bootPlugin();
   await call(host, { type: 'tool-call', callId: 'r1', tool: 'scan_todos', args: { text: '// TODO: a' } });
-  const only = host.channel.posted.find((m) => m.type === 'state').items[0];
-  await host.channel.fromPanel({ type: 'mark', key: only.key, resolved: true });
+  const firstScanState = host.channel.posted.find((m) => m.type === 'state');
+  const only = firstScanState.items[0];
+  await host.channel.fromPanel({ type: 'mark', key: only.key, resolved: true, scanGen: firstScanState.scanGen });
   const first = await call(host, { type: 'tool-call', callId: 'r2', tool: 'get_selection', args: {} });
   assert.equal(first[first.length - 1].result.unresolvedCount, 0);
 
@@ -423,6 +429,48 @@ test('a new scan clears earlier tick-offs', async () => {
     1,
     'stale tick-offs must not survive a rescan'
   );
+});
+
+test('a mark against a stale scan generation is rejected, not misapplied', async () => {
+  // The same key can be reused by a later scan (line/column/tag is only
+  // unique within one scan). A mark queued before the rescan lands with the
+  // OLD scanGen; it must be dropped instead of resolving whatever item in
+  // the NEW scan happens to share that key.
+  const host = bootPlugin();
+  await call(host, { type: 'tool-call', callId: 's1', tool: 'scan_todos', args: { text: '// TODO: a' } });
+  const staleScanState = host.channel.posted.find((m) => m.type === 'state');
+  const staleGen = staleScanState.scanGen;
+  const key = staleScanState.items[0].key;
+
+  await call(host, { type: 'tool-call', callId: 's2', tool: 'scan_todos', args: { text: '// TODO: a' } });
+
+  await host.channel.fromPanel({ type: 'mark', key, resolved: true, scanGen: staleGen });
+
+  const sent = await call(host, { type: 'tool-call', callId: 's3', tool: 'get_selection', args: {} });
+  assert.equal(
+    sent[sent.length - 1].result.unresolvedCount,
+    1,
+    'a stale-generation mark must not resolve the new scan\'s item'
+  );
+});
+
+test('item text is bounded so one long line cannot blow up the payload', async () => {
+  // A 200k-char input that is a single marker line used to hand back a
+  // ~200k-char `text` on every one of up to 200 items — a ~40MB tool/panel
+  // payload from input that passed the top-level length check cleanly.
+  const host = bootPlugin();
+  const longLine = 'TODO ' + 'x'.repeat(199995);
+  const sent = await call(host, {
+    type: 'tool-call',
+    callId: 'big',
+    tool: 'scan_todos',
+    args: { text: longLine }
+  });
+  const result = sent[sent.length - 1].result;
+  assert.equal(result.ok !== false, true);
+  for (const item of result.items) {
+    assert.ok(item.text.length <= 301, 'item.text must stay bounded regardless of line length');
+  }
 });
 
 /* --------------------------------------------------- panel asset invariants */

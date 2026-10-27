@@ -23,6 +23,7 @@
 
 var MAX_TEXT_LENGTH = 200000;
 var MAX_ITEMS = 200;
+var MAX_ITEM_TEXT_LENGTH = 300;
 var TAG_NAMES = ['TODO', 'FIXME', 'HACK', 'XXX'];
 var TAG_LOOKUP = { TODO: true, FIXME: true, HACK: true, XXX: true };
 // Source only: each line is scanned with a fresh global copy so several markers
@@ -30,7 +31,6 @@ var TAG_LOOKUP = { TODO: true, FIXME: true, HACK: true, XXX: true };
 var MARKER_PATTERN = '\\b(TODO|FIXME|HACK|XXX)\\b';
 var LEADING_SEPARATOR_RE = /^[\s:：\-–—(\[]+/;
 var CHANNEL_NAME = 'todo-scan';
-var MAX_SEEN_REQ_IDS = 50;
 
 /** Scan result + triage state. In memory only; nothing is persisted. */
 var state = {
@@ -41,11 +41,15 @@ var state = {
   scannedLines: 0,
   filter: '',
   resolved: Object.create(null),
-  lastScanAt: 0
+  lastScanAt: 0,
+  // Bumped on every scan_todos call. Echoed to the panel and required on
+  // every mark message, because a key is only unique within one scan: a
+  // mark queued against a stale scan's key could otherwise resolve whatever
+  // item in the NEW scan happens to reuse that key.
+  scanGen: 0
 };
 
 var channel = null;
-var seenReqIds = [];
 
 function succeed(callId, result) {
   return cindy.send({ type: 'tool-result', callId: callId, ok: true, result: result });
@@ -62,9 +66,16 @@ function fail(callId, errorCode, message) {
 }
 
 function markerText(line, matchIndex, matchLength) {
-  var rest = line.slice(matchIndex + matchLength);
+  // Bounded: a 200k-char single-marker line would otherwise hand back a
+  // ~200k-char `text` on every one of up to 200 items — a ~40MB tool/panel
+  // payload from input that passed the top-level 200k-char limit cleanly.
+  var rest = line.slice(matchIndex + matchLength, matchIndex + matchLength + MAX_ITEM_TEXT_LENGTH + 1);
   rest = rest.replace(LEADING_SEPARATOR_RE, '');
-  return rest.replace(/\s+$/, '');
+  rest = rest.replace(/\s+$/, '');
+  if (rest.length > MAX_ITEM_TEXT_LENGTH) {
+    rest = rest.slice(0, MAX_ITEM_TEXT_LENGTH) + '…';
+  }
+  return rest;
 }
 
 /**
@@ -145,7 +156,8 @@ function panelPayload(reqId) {
     total: state.total,
     truncated: state.truncated,
     resolved: resolvedKeys(),
-    lastScanAt: state.lastScanAt
+    lastScanAt: state.lastScanAt,
+    scanGen: state.scanGen
   };
 }
 
@@ -158,19 +170,16 @@ function broadcastState() {
   }
 }
 
-function rememberReqId(reqId) {
-  if (!reqId || typeof reqId !== 'string') return false;
-  if (seenReqIds.indexOf(reqId) !== -1) return true;
-  seenReqIds.push(reqId);
-  if (seenReqIds.length > MAX_SEEN_REQ_IDS) seenReqIds.shift();
-  return false;
-}
-
 function handlePanelMessage(message) {
   if (!message || typeof message !== 'object') return;
 
   if (message.type === 'state-request') {
-    if (rememberReqId(message.reqId)) return; // retry of a request we already answered
+    // A state read is pure and idempotent, so it is always safe to answer
+    // again — including a retry of a reqId we already answered, in case
+    // that earlier response never reached the panel (channel hiccup, panel
+    // not open yet). Remembering "already answered" and skipping the resend
+    // was the bug: if the first send was the one that got lost, the retry
+    // then got silently dropped too and the panel never recovered.
     if (channel) {
       try {
         channel.postMessage(panelPayload(message.reqId));
@@ -183,6 +192,10 @@ function handlePanelMessage(message) {
 
   if (message.type === 'mark') {
     if (typeof message.key !== 'string' || !message.key) return;
+    // Keys are only unique within one scan. A mark the panel queued against
+    // an older scan (e.g. a slow click landing after a rescan) must not
+    // resolve whatever item in the new scan happens to reuse that key.
+    if (message.scanGen !== state.scanGen) return;
     if (message.resolved) state.resolved[message.key] = true;
     else delete state.resolved[message.key];
     return;
@@ -248,6 +261,7 @@ function handleScanTodos(callId, args) {
   state.resolved = Object.create(null); // a new scan invalidates old tick-offs
   state.filter = tagFilter || '';
   state.lastScanAt = Date.now();
+  state.scanGen += 1;
 
   ensureChannel();
   broadcastState();
